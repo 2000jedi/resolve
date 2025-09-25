@@ -1,6 +1,7 @@
 apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     clang \
+    clang-format \
     lld \
     cmake \
     ninja-build \
