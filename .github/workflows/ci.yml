@@ -3,10 +3,12 @@ name: resolve CI
 on: [push, pull_request]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
-      - name: make all
-        run: make all
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
