@@ -1,0 +1,95 @@
+use std::collections::BTreeMap;
+use std::sync::{LazyLock, Mutex};
+use std::ops::RangeInclusive;
+
+//Declare alias for virtual address
+pub type Vaddr = usize;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+// NOTE: Debug trait enables println!("{:?}") 
+pub enum AllocType {
+    Unallocated,
+    Unknown,
+    Heap,
+    Stack,
+    Global,
+}
+
+impl AllocType {
+    pub fn is_allocation(&self) -> bool {
+        match self {
+            Self::Unallocated | Self::Unknown => false,
+            _ => true,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ShadowObject {
+    pub alloc_type: AllocType,  // Allocation type (Heap, Stack, Global, etc..)
+    pub base: Vaddr,            // Base address of the allocated object mapped to u64 
+    pub limit: Vaddr,           // Last address of the allocated object 
+}
+
+impl ShadowObject {
+    /**
+     * @brief - Returns the base / limit of this shadow object as RangeInclusive
+     * @note - Useful for querying contains
+     */
+    pub fn bounds(&self) -> RangeInclusive<Vaddr> {
+        self.base..=(self.base + self.limit)
+    }
+
+    pub fn contains(&self, addr: Vaddr) -> bool {
+        self.bounds().contains(&addr)
+    }
+
+    pub fn is_allocation(&self) -> bool{
+        self.alloc_type.is_allocation()
+    }
+
+    /**
+     * @brief - Computes size of shadow object from base and limit
+     */
+    pub fn size(&self) -> usize {
+        self.limit - self.base + 1
+    }
+
+    /// compute a limit from addr + size
+    pub fn limit(addr: Vaddr, size: usize) -> Vaddr {
+        addr + size - 1
+    }
+}
+
+pub struct ShadowObjectTable {
+    table: BTreeMap<Vaddr, ShadowObject>,
+}
+
+impl ShadowObjectTable {
+    pub fn new() -> ShadowObjectTable {
+        ShadowObjectTable{ table: BTreeMap::new() }
+    }
+
+    /**
+     * @brief  - Adds a shadow object to the object list
+     */
+    pub fn add_shadow_object(&mut self, alloc_type: AllocType, objaddr: Vaddr, offset: usize)  {
+        let sobj = ShadowObject{ alloc_type, base: objaddr, limit: offset };
+        self.table.insert(objaddr, sobj);
+    }
+
+    /**
+     * @brief - Looks through OBJLIST to find a shadow object that is within 
+     *          a given virtual address and limit 
+     * @input:  self, shadow object address  
+     * @return: None if shadow object does not exist otherwise optional reference to shadow object  
+     */
+    pub fn search_intersection(&self, addr: Vaddr) -> Option<&ShadowObject> {
+        self.table.values().find(|sobj| sobj.contains(addr))
+    }
+}
+
+// static object lists to store all objects
+pub static ALIVE_OBJ_LIST: LazyLock<Mutex<ShadowObjectTable>> = LazyLock::new(|| Mutex::new(ShadowObjectTable::new()));
+pub static FREED_OBJ_LIST: LazyLock<Mutex<ShadowObjectTable>> = LazyLock::new(|| Mutex::new(ShadowObjectTable::new()));

@@ -24,10 +24,13 @@ apt-get update && apt-get install -y --no-install-recommends \
     clang-16 \
     llvm-16 \
     libncurses-dev \
-    libz3-dev zlib1g-dev
+    libz3-dev \
+    zlib1g-dev
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*
+
+rustup default nightly
 
 python3 -m pip install lit wllvm --break-system-packages
 
