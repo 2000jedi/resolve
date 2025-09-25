@@ -10,155 +10,173 @@
 
 using namespace llvm;
 
-static Function *getOrCreateNullPtrLoadSanitizer(Module *M, LLVMContext &Ctx, Type *ty) {
-    Twine handlerName = "resolve_sanitize_null_ptr_ld_" + getLLVMType(ty);
-    SmallVector<char> handlerNameStr;
+static Function *getOrCreateNullPtrLoadSanitizer(Module *M, LLVMContext &Ctx,
+                                                 Type *ty) {
+  Twine handlerName = "resolve_sanitize_null_ptr_ld_" + getLLVMType(ty);
+  SmallVector<char> handlerNameStr;
 
-    if (auto handler = M->getFunction(handlerName.toStringRef(handlerNameStr)))
-        return handler;
+  if (auto handler = M->getFunction(handlerName.toStringRef(handlerNameStr)))
+    return handler;
 
-    IRBuilder<> Builder(Ctx);
-    // TODO: handle address spaces other than 0
-    auto ptr_ty = PointerType::get(Ctx, 0);
+  IRBuilder<> Builder(Ctx);
+  // TODO: handle address spaces other than 0
+  auto ptr_ty = PointerType::get(Ctx, 0);
 
-    FunctionCallee resolve_report_func = getOrCreateResolveReportSantizerTriggered(*M);
+  FunctionCallee resolve_report_func =
+      getOrCreateResolveReportSantizerTriggered(*M);
 
-    // TODO: write this in asm as some kind of sanitzer_rt?
-    FunctionType *FuncType = FunctionType::get(ty, {ptr_ty}, false);
-    Function *SanitizeFunc = Function::Create(FuncType, Function::InternalLinkage, handlerName, M);
+  // TODO: write this in asm as some kind of sanitzer_rt?
+  FunctionType *FuncType = FunctionType::get(ty, {ptr_ty}, false);
+  Function *SanitizeFunc =
+      Function::Create(FuncType, Function::InternalLinkage, handlerName, M);
 
-    BasicBlock *Entry = BasicBlock::Create(Ctx, "entry", SanitizeFunc);
-    BasicBlock *SanitizeBlock = BasicBlock::Create(Ctx, "sanitize_block", SanitizeFunc);
-    BasicBlock *LoadBlock = BasicBlock::Create(Ctx, "load_block", SanitizeFunc);
+  BasicBlock *Entry = BasicBlock::Create(Ctx, "entry", SanitizeFunc);
+  BasicBlock *SanitizeBlock =
+      BasicBlock::Create(Ctx, "sanitize_block", SanitizeFunc);
+  BasicBlock *LoadBlock = BasicBlock::Create(Ctx, "load_block", SanitizeFunc);
 
-    // Set insertion point to entry block
-    Builder.SetInsertPoint(Entry);
-    
-    // Get function argument
-    Argument *InputPtr = SanitizeFunc->getArg(0);
+  // Set insertion point to entry block
+  Builder.SetInsertPoint(Entry);
 
-    // Compare pointer with null (opaque ptrs use generic ptr type)
-    // TODO: Sanitize other invalid pointers
-    Value *IsNull = Builder.CreateICmpEQ(InputPtr, ConstantPointerNull::get(ptr_ty));
+  // Get function argument
+  Argument *InputPtr = SanitizeFunc->getArg(0);
 
-    // Conditional branch
-    Builder.CreateCondBr(IsNull, SanitizeBlock, LoadBlock);
+  // Compare pointer with null (opaque ptrs use generic ptr type)
+  // TODO: Sanitize other invalid pointers
+  Value *IsNull =
+      Builder.CreateICmpEQ(InputPtr, ConstantPointerNull::get(ptr_ty));
 
-    // Trap Block: calls libmemorizer_trap
-    Builder.SetInsertPoint(SanitizeBlock);
-    Builder.CreateCall(resolve_report_func);
-    Value *Arbitrary = Constant::getNullValue(ty);
-    Builder.CreateRet(Arbitrary);
+  // Conditional branch
+  Builder.CreateCondBr(IsNull, SanitizeBlock, LoadBlock);
 
-    // Return Block: returns pointer if non-null
-    Builder.SetInsertPoint(LoadBlock);
-    Value *ld = Builder.CreateLoad(ty, InputPtr);
-    Builder.CreateRet(ld);
+  // Trap Block: calls libmemorizer_trap
+  Builder.SetInsertPoint(SanitizeBlock);
+  Builder.CreateCall(resolve_report_func);
+  Value *Arbitrary = Constant::getNullValue(ty);
+  Builder.CreateRet(Arbitrary);
 
-    raw_ostream &out = errs();
-    out << *SanitizeFunc;
-    if (verifyFunction(*SanitizeFunc, &out)) {}
+  // Return Block: returns pointer if non-null
+  Builder.SetInsertPoint(LoadBlock);
+  Value *ld = Builder.CreateLoad(ty, InputPtr);
+  Builder.CreateRet(ld);
 
-    return SanitizeFunc;
+  raw_ostream &out = errs();
+  out << *SanitizeFunc;
+  if (verifyFunction(*SanitizeFunc, &out)) {
+  }
+
+  return SanitizeFunc;
 }
 
-static Function *getOrCreateNullPtrStoreSanitizer(Module *M, LLVMContext &Ctx, Type *ty) {
-    Twine handlerName = "resolve_sanitize_null_ptr_st_" + getLLVMType(ty);
-    SmallVector<char> handlerNameStr;
+static Function *getOrCreateNullPtrStoreSanitizer(Module *M, LLVMContext &Ctx,
+                                                  Type *ty) {
+  Twine handlerName = "resolve_sanitize_null_ptr_st_" + getLLVMType(ty);
+  SmallVector<char> handlerNameStr;
 
-    if (auto handler = M->getFunction(handlerName.toStringRef(handlerNameStr)))
-        return handler;
+  if (auto handler = M->getFunction(handlerName.toStringRef(handlerNameStr)))
+    return handler;
 
-    IRBuilder<> Builder(Ctx);
-    // TODO: handle address spaces other than 0
-    auto ptr_ty = PointerType::get(Ctx, 0);
+  IRBuilder<> Builder(Ctx);
+  // TODO: handle address spaces other than 0
+  auto ptr_ty = PointerType::get(Ctx, 0);
 
-    FunctionCallee resolve_report_func = getOrCreateResolveReportSantizerTriggered(*M);
+  FunctionCallee resolve_report_func =
+      getOrCreateResolveReportSantizerTriggered(*M);
 
-    // TODO: write this in asm as some kind of sanitzer_rt?
-    FunctionType *FuncType = FunctionType::get(Type::getVoidTy(Ctx), {ptr_ty, ty}, false);
-    Function *SanitizeFunc = Function::Create(FuncType, Function::InternalLinkage, handlerName, M);
+  // TODO: write this in asm as some kind of sanitzer_rt?
+  FunctionType *FuncType =
+      FunctionType::get(Type::getVoidTy(Ctx), {ptr_ty, ty}, false);
+  Function *SanitizeFunc =
+      Function::Create(FuncType, Function::InternalLinkage, handlerName, M);
 
-    BasicBlock *Entry = BasicBlock::Create(Ctx, "entry", SanitizeFunc);
-    BasicBlock *SanitizeBlock = BasicBlock::Create(Ctx, "sanitize_block", SanitizeFunc);
-    BasicBlock *StoreBlock = BasicBlock::Create(Ctx, "store_block", SanitizeFunc);
+  BasicBlock *Entry = BasicBlock::Create(Ctx, "entry", SanitizeFunc);
+  BasicBlock *SanitizeBlock =
+      BasicBlock::Create(Ctx, "sanitize_block", SanitizeFunc);
+  BasicBlock *StoreBlock = BasicBlock::Create(Ctx, "store_block", SanitizeFunc);
 
-    // Set insertion point to entry block
-    Builder.SetInsertPoint(Entry);
-    
-    // Get function argument
-    Argument *InputPtr = SanitizeFunc->getArg(0);
-    Argument *InputVal = SanitizeFunc->getArg(1);
+  // Set insertion point to entry block
+  Builder.SetInsertPoint(Entry);
 
-    // Compare pointer with null (opaque ptrs use generic ptr type)
-    // TODO: Sanitize other invalid pointers
-    Value *IsNull = Builder.CreateICmpEQ(InputPtr, ConstantPointerNull::get(ptr_ty));
+  // Get function argument
+  Argument *InputPtr = SanitizeFunc->getArg(0);
+  Argument *InputVal = SanitizeFunc->getArg(1);
 
-    // Conditional branch
-    Builder.CreateCondBr(IsNull, SanitizeBlock, StoreBlock);
+  // Compare pointer with null (opaque ptrs use generic ptr type)
+  // TODO: Sanitize other invalid pointers
+  Value *IsNull =
+      Builder.CreateICmpEQ(InputPtr, ConstantPointerNull::get(ptr_ty));
 
-    // Trap Block: calls libmemorizer_trap
-    Builder.SetInsertPoint(SanitizeBlock);
-    Builder.CreateCall(resolve_report_func);
-    Builder.CreateRetVoid();
+  // Conditional branch
+  Builder.CreateCondBr(IsNull, SanitizeBlock, StoreBlock);
 
-    // Return Block: returns pointer if non-null
-    Builder.SetInsertPoint(StoreBlock);
-    Builder.CreateStore(InputVal, InputPtr);
-    Builder.CreateRetVoid();
+  // Trap Block: calls libmemorizer_trap
+  Builder.SetInsertPoint(SanitizeBlock);
+  Builder.CreateCall(resolve_report_func);
+  Builder.CreateRetVoid();
 
-    raw_ostream &out = errs();
-    out << *SanitizeFunc;
-    if (verifyFunction(*SanitizeFunc, &out)) {}
+  // Return Block: returns pointer if non-null
+  Builder.SetInsertPoint(StoreBlock);
+  Builder.CreateStore(InputVal, InputPtr);
+  Builder.CreateRetVoid();
 
-    return SanitizeFunc;
+  raw_ostream &out = errs();
+  out << *SanitizeFunc;
+  if (verifyFunction(*SanitizeFunc, &out)) {
+  }
+
+  return SanitizeFunc;
 }
 
 void sanitizeNullPointers(Function *f) {
-    IRBuilder<> builder(f->getContext());
+  IRBuilder<> builder(f->getContext());
 
-    std::vector<LoadInst*> loadList;
-    std::vector<StoreInst*> storeList;
-    
-    for (auto &BB : *f) {
-        for (auto &I : BB) {
-        if (auto Inst = dyn_cast<LoadInst>(&I)) {
-            loadList.push_back(Inst);
-        } else if (auto Inst = dyn_cast<StoreInst>(&I)) {
-            storeList.push_back(Inst);
-        }
-        }
+  std::vector<LoadInst *> loadList;
+  std::vector<StoreInst *> storeList;
+
+  for (auto &BB : *f) {
+    for (auto &I : BB) {
+      if (auto Inst = dyn_cast<LoadInst>(&I)) {
+        loadList.push_back(Inst);
+      } else if (auto Inst = dyn_cast<StoreInst>(&I)) {
+        storeList.push_back(Inst);
+      }
+    }
+  }
+
+  for (auto Inst : loadList) {
+    builder.SetInsertPoint(Inst);
+    auto valueTy = Inst->getType();
+    if (getLLVMType(valueTy) == "") {
+      errs() << "[CVEAssert] Warning: skipping unsupported type " << *valueTy
+             << "\n";
+      continue;
     }
 
-    for (auto Inst : loadList) {
-        builder.SetInsertPoint(Inst);
-        auto valueTy = Inst->getType();
-        if (getLLVMType(valueTy) == "") {
-            errs() << "[CVEAssert] Warning: skipping unsupported type " << *valueTy << "\n";
-            continue;
-        }
+    auto loadFn = getOrCreateNullPtrLoadSanitizer(f->getParent(),
+                                                  f->getContext(), valueTy);
 
-        auto loadFn = getOrCreateNullPtrLoadSanitizer(f->getParent(), f->getContext(), valueTy);
+    auto sanitized_load =
+        builder.CreateCall(loadFn, {Inst->getPointerOperand()});
+    Inst->replaceAllUsesWith(sanitized_load);
+    Inst->removeFromParent();
+    Inst->deleteValue();
+  }
 
-        auto sanitized_load = builder.CreateCall(loadFn, {Inst->getPointerOperand()});
-        Inst->replaceAllUsesWith(sanitized_load);
-        Inst->removeFromParent();
-        Inst->deleteValue();
+  for (auto Inst : storeList) {
+    builder.SetInsertPoint(Inst);
+    auto valueTy = Inst->getValueOperand()->getType();
+    if (getLLVMType(valueTy) == "") {
+      errs() << "[CVEAssert] Warning: skipping unsupported type " << *valueTy
+             << "\n";
+      continue;
     }
-        
-    for (auto Inst : storeList) {
-        builder.SetInsertPoint(Inst);
-        auto valueTy = Inst->getValueOperand()->getType();
-        if (getLLVMType(valueTy) == "") {
-            errs() << "[CVEAssert] Warning: skipping unsupported type " << *valueTy << "\n";
-            continue;
-        }
 
-        auto storeFn = getOrCreateNullPtrStoreSanitizer(f->getParent(), f->getContext(), valueTy);
+    auto storeFn = getOrCreateNullPtrStoreSanitizer(f->getParent(),
+                                                    f->getContext(), valueTy);
 
-        auto sanitized_load = builder.CreateCall(storeFn, {Inst->getPointerOperand(), Inst->getValueOperand()});
-        Inst->removeFromParent();
-        Inst->deleteValue();
-    }
+    auto sanitized_load = builder.CreateCall(
+        storeFn, {Inst->getPointerOperand(), Inst->getValueOperand()});
+    Inst->removeFromParent();
+    Inst->deleteValue();
+  }
 }
-
