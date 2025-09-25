@@ -3,6 +3,8 @@ project(resolve-llvm-plugin)
 
 find_package(LLVM CONFIG)
 
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
 # Add LLVM headers to include search paths
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 

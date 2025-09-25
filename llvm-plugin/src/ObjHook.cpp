@@ -348,7 +348,7 @@ public:
         continue;
 
       StringRef func_name = F.getName();
-      if (func_name.startswith("resolve_"))
+      if (func_name.starts_with("resolve_"))
         continue;
 
       runOnFunction(F, M, Ctx);
