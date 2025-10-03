@@ -25,10 +25,13 @@ apt-get update && apt-get install -y --no-install-recommends \
     llvm-16 \
     libncurses-dev \
     libz3-dev \
-    zlib1g-dev
+    zlib1g-dev \
+    curl
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*
+
+curl https://sh.rustup.rs -sSf | sh
 
 rustup default nightly
 
