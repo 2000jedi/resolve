@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 all: build
 
-build: build-llvm-plugin build-libresolve
+build: build-llvm-plugin build-libresolve build-reach
 
 build-llvm-plugin: llvm-plugin build-libresolve
 	+$(MAKE) -C llvm-plugin
@@ -13,3 +13,6 @@ test: test-llvm-plugin
 
 test-llvm-plugin:
 	+$(MAKE) -C llvm-plugin test
+
+build-reach: reach
+	+$(MAKE) -C reach
