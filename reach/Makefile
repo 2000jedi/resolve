@@ -1,4 +1,4 @@
-all: src build test
+all: src build
 
 build: src
 	mkdir -p build
