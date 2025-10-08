@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(reach)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib)
+add_subdirectory(lib)
 
 # set (CMAKE_CXX_STANDARD 23)
 set (CMAKE_BUILD_TYPE Release)
