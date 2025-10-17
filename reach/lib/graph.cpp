@@ -154,6 +154,18 @@ graph::build_simple_graph(const database& db,
   // Direct calls
   for (const auto& [instr, fn] : db.calls) {
     g.addEdge(hm.getHandle(fn), hm.getHandle(instr), EdgeType::DirectCall);
+    
+    // Special case for direct calls to [pthread_create]: add
+    // edges for all address-taken functions with type signature
+    // "ptr (ptr)".
+    if (AT(db.calls, instr).ends_with(":fpthread_create")) {
+      for (const auto& fn : db.address_taken) {
+	if (AT(db.fun_sig, fn) == "ptr (ptr)") {
+	  g.addEdge(hm.getHandle(fn), hm.getHandle(instr),
+		    EdgeType::IndirectCall, INDIRECT_WEIGHT);
+	}
+      } 
+    }
   }
 
   // Indirect calls
@@ -228,6 +240,19 @@ graph::build_call_graph(const database& db,
 	if (call_ty == CallType::Direct) {
 	  g.addEdge(hm.getHandle(AT(db.calls, instr)), hm.getHandle(f),
 		    EdgeType::DirectCall);
+	  
+	  // Special case for direct calls to [pthread_create]: add
+	  // edges for all address-taken functions with type signature
+	  // "ptr (ptr)".
+	  if (AT(db.calls, instr).ends_with(":fpthread_create")) {
+	    for (const auto& fn : db.address_taken) {
+	      if (AT(db.fun_sig, fn) == "ptr (ptr)") {
+		g.addEdge(hm.getHandle(fn), hm.getHandle(f),
+			  EdgeType::IndirectCall, INDIRECT_WEIGHT);
+	      }
+	    } 
+	  }
+
 	  continue;
 	}
 	// Else indirect. Add edges for all compatible address-taken functions.
@@ -329,6 +354,19 @@ graph::build_cfg(const database& db,
       if (call_ty == CallType::Direct) {
 	g.addEdge(hm.getHandle(AT(db.calls, instr)),
 		  hm.getHandle(bb), EdgeType::DirectCall);
+
+	// Special case for direct calls to [pthread_create]: add
+	// edges for all address-taken functions with type signature
+	// "ptr (ptr)".
+	if (AT(db.calls, instr).ends_with(":fpthread_create")) {
+	  for (const auto& fn : db.address_taken) {
+	    if (AT(db.fun_sig, fn) == "ptr (ptr)") {
+	      g.addEdge(hm.getHandle(fn), hm.getHandle(bb),
+			EdgeType::IndirectCall, INDIRECT_WEIGHT);
+	    }
+	  } 
+	}
+	
 	continue;
       }
       // Else indirect. Add edges for all compatible address-taken functions.
@@ -402,7 +440,7 @@ graph::build_instr_cfg(const database& db,
   next:;
   }
 
-  // Intra-BB control flow (linear)
+  // Intra-BB control flow (straight line)
   for (const auto& [bb, bb_ty] : db.node_type) {
     if (bb_ty != NodeType::BasicBlock) {
       continue;
@@ -436,6 +474,19 @@ graph::build_instr_cfg(const database& db,
       if (call_ty == CallType::Direct) {
 	g.addEdge(hm.getHandle(AT(db.calls, instr)),
 		  hm.getHandle(instr), EdgeType::DirectCall);
+
+	// Special case for direct calls to [pthread_create]: add
+	// edges for all address-taken functions with type signature
+	// "ptr (ptr)".
+	if (AT(db.calls, instr).ends_with(":fpthread_create")) {
+	  for (const auto& fn : db.address_taken) {
+	    if (AT(db.fun_sig, fn) == "ptr (ptr)") {
+	      g.addEdge(hm.getHandle(fn), hm.getHandle(instr),
+			EdgeType::IndirectCall, INDIRECT_WEIGHT);
+	    }
+	  } 
+	}
+	
 	continue;
       }
       // Else indirect. Add edges for all compatible address-taken functions.
