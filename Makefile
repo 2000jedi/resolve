@@ -16,3 +16,14 @@ test-llvm-plugin:
 
 build-reach: reach
 	+$(MAKE) -C reach
+
+clean: clean-llvm-plugin clean-libresolve clean-reach
+
+clean-llvm-plugin:
+	cd llvm-plugin && make clean
+
+clean-libresolve:
+	cd libresolve && cargo clean
+
+clean-reach:
+	cd reach && make clean

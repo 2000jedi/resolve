@@ -13,12 +13,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-# Match C++ stdlib version with system llvm
-if(LLVM_VERSION_MAJOR GREATER_EQUAL 18)
-    set(CMAKE_CXX_STANDARD 17 STRING "")
-else()
-    set(CMAKE_CXX_STANDARD 14 STRING "")
-endif()
+set(CMAKE_CXX_STANDARD 17 STRING "")
 
 # LLVM is normally built without RTTI. Be consistent with that.
 if(NOT LLVM_ENABLE_RTTI)
