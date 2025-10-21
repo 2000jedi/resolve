@@ -1,4 +1,4 @@
-all: src build test
+all: build test
 
 build: src
 	mkdir -p build
@@ -11,5 +11,5 @@ test: build
 	+$(MAKE) -C test/test_annotate_functions
 	+$(MAKE) -C test/test_cveassert
 
-clean: build
+clean:
 	rm -rf build

@@ -1,11 +1,12 @@
-all: src build
+.PHONY: all clean build
 
-build: src
-	mkdir -p build
-	cd build && cmake .. && make -j4
+all: build
 
-clangformat: src
-	cd build && make clangformat
+build: src lib
+	cmake -B build && cd build && make -j$(nproc)
 
-clean: build
+# clangformat: src
+# 	cd build && make clangformat
+
+clean:
 	rm -rf build
