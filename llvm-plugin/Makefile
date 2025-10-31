@@ -8,7 +8,6 @@ clangformat: src
 	cd build && make clangformat
 
 test: build
-	+$(MAKE) -C test/test_annotate_functions
-
+	+$(MAKE) -C tests/test_annotate_functions
 clean:
 	rm -rf build
