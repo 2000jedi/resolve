@@ -3,8 +3,12 @@
 
 #include "llvm/IR/Function.h"
 
+void sanitizeDivideByZero(llvm::Function *F);
+void sanitizeDivideByZeroRecover(llvm::Function *F);
 llvm::Function *replaceUndesirableFunction(llvm::Function *F,
                                            llvm::CallInst *call);
-void sanitizeDivideByZero(llvm::Function *F);
 void sanitizeDivideByZeroinFunction(llvm::Function *F,
                                     std::optional<std::string> funct_name);
+void sanitizeIntOverflow(llvm::Function *F);
+void sanitizeIntOverflowRecover(llvm::Function *F);
+void sanitizeBinShift(llvm::Function *F);

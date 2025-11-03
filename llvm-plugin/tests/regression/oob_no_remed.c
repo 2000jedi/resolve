@@ -1,3 +1,8 @@
+// RUN: %clang -S -emit-llvm \
+// RUN: %s -o - | %FileCheck %s 
+// CHECK-LABEL: dso_local i32 @main
+// CHECK-NOT: call ptr @resolve_sanitize_memcpy
+
 #include <stdlib.h>
 int loop(int *array) {
     int *ptr = array;
