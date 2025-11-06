@@ -39,6 +39,13 @@ namespace {
 struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
   std::vector<Vulnerability> vulnerabilities;
 
+  enum VulnID {
+    OOB_ACCESS = 133,
+    DIVIDE_BY_ZERO = 369,
+    INT_OVERFLOW = 455,
+    NULL_PTR_DEREF = 476,
+    STACK_FREE = 590
+  };
     LabelCVEPass() {
       // Initialize env vars
       CVE_ASSERT_STRATEGY = strdup(std::getenv("RESOLVE_STRATEGY") ?: "");
@@ -143,12 +150,11 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
     out << F;
 
     switch (vuln.WeaknessID) {
-      case 132: /* OOB access */ 
-      case 133:
+      case Vuln::OOB_ACCESS: /* OOB access */ 
         sanitizeMemInstBounds(&F, MAM);
         break;
 
-      case 369: /* Divide by zero */
+      case Vuln::DIVIDE_BY_ZERO: /* Divide by zero */
         if (vuln.UndesirableFunction.value().size() > 1) {
           sanitizeDivideByZeroinFunction(&F, vuln.UndesirableFunction);
         } else {
@@ -156,15 +162,15 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
         }
         break;
 
-      case 455: /* Integer overflow */
+      case Vuln::INT_OVERFLOW: /* Integer overflow */
         sanitizeIntOverflow(&F);
         break;
 
-      case 476: /* Null pointer dereference */
+      case Vuln::NULL_PTR_DEREF: /* Null pointer dereference */
         sanitizeNullPointers(&F);
         break;
 
-      case 590: /* Free stack memory */
+      case Vuln::STACK_FREE: /* Free stack memory */
         sanitizeFreeOfNonHeap(&F);
         break;
 
