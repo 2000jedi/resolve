@@ -415,10 +415,12 @@ Function *replaceUndesirableFunction(Function *F, CallInst *call) {
 
   // 1. Create the function name and type.
   std::string sanitizedHandlerName = "resolve_sanitized_function";
-
-  if (Function *existing = M->getFunction(sanitizedHandlerName)) {
-    if (existing->getFunctionType() == calledFunc->getFunctionType())
-    return existing;
+  
+  Function *existing = M->getFunction(sanitizedHandlerName);
+  if (existing != nullptr) {
+    if (existing->getFunctionType() == calledFunc->getFunctionType()) {
+      return existing;
+    }
   }
 
   FunctionType *sanitizedHandlerType = calledFunc->getFunctionType();
