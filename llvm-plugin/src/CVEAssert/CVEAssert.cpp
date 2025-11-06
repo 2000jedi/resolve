@@ -142,23 +142,35 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
     out << "[CVEAssert] === Pre Instrumented IR === \n";
     out << F;
 
-    if (vuln.WeaknessID == 476) {
-      sanitizeNullPointers(&F);
-    } else if (vuln.WeaknessID == 590) {
-      sanitizeFreeOfNonHeap(&F);
-    } else if (vuln.WeaknessID == 133) {
-      sanitizeMemInstBounds(&F, MAM);
-    } else if (vuln.WeaknessID == 132) {
-      sanitizeMemInstBounds(&F, MAM);
-    } else if (vuln.WeaknessID == 369 && vuln.UndesirableFunction.has_value()) {
-      sanitizeDivideByZeroinFunction(&F, vuln.UndesirableFunction);
-    } else if (vuln.WeaknessID == 369) {
-      sanitizeDivideByZero(&F);
-    } else if (vuln.WeaknessID == 455) {
-      sanitizeIntOverflow(&F);
-    }
-    else {
-      errs() << "[CVEAssert] Error: CWE " << vuln.WeaknessID << "not implemented\n";
+    switch (vuln.WeaknessID) {
+      case 132: /* OOB access */ 
+      case 133:
+        sanitizeMemInstBounds(&F);
+        break;
+
+      case 369: /* Divide by zero */
+        if (vuln.UndesirableFunction.value().size() > 1) {
+          sanitizeDivideByZeroinFunction(&F, vuln.UndesirableFunction);
+        } else {
+          sanitizeDivideByZero(&F);
+        }
+        break;
+
+      case 455: /* Integer overflow */
+        sanitizeIntOverflow(&F);
+        break;
+
+      case 476: /* Null pointer dereference */
+        sanitizeNullPointers(&F);
+        break;
+
+      case 590: /* Free stack memory */
+        sanitizeFreeOfNonHeap(&F);
+        break;
+
+      default:
+        errs() << "[CVEAssert] Error: CWE " << vuln.WeaknessID
+               << " not implemented\n";
     }
 
     out << "[CVEAssert] === Post Instrumented IR === \n"; 
