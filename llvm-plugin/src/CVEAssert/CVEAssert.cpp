@@ -150,11 +150,11 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
     out << F;
 
     switch (vuln.WeaknessID) {
-      case Vuln::OOB_ACCESS: /* OOB access */ 
+      case VulnID::OOB_ACCESS: /* OOB access */ 
         sanitizeMemInstBounds(&F, MAM);
         break;
 
-      case Vuln::DIVIDE_BY_ZERO: /* Divide by zero */
+      case VulnID::DIVIDE_BY_ZERO: /* Divide by zero */
         if (vuln.UndesirableFunction.value().size() > 1) {
           sanitizeDivideByZeroinFunction(&F, vuln.UndesirableFunction);
         } else {
@@ -162,15 +162,15 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
         }
         break;
 
-      case Vuln::INT_OVERFLOW: /* Integer overflow */
+      case VulnID::INT_OVERFLOW: /* Integer overflow */
         sanitizeIntOverflow(&F);
         break;
 
-      case Vuln::NULL_PTR_DEREF: /* Null pointer dereference */
+      case VulnID::NULL_PTR_DEREF: /* Null pointer dereference */
         sanitizeNullPointers(&F);
         break;
 
-      case Vuln::STACK_FREE: /* Free stack memory */
+      case VulnID::STACK_FREE: /* Free stack memory */
         sanitizeFreeOfNonHeap(&F);
         break;
 
