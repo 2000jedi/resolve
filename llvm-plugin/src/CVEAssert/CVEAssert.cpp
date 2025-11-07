@@ -161,10 +161,10 @@ struct LabelCVEPass : public PassInfoMixin<LabelCVEPass> {
         break;
 
       case VulnID::DIVIDE_BY_ZERO: /* NOTE: This ID corresponds to CWE description in ros2 challenge problem */
-        if (vuln.UndesirableFunction.value().size() > 1) {
-          sanitizeDivideByZeroinFunction(&F, vuln.UndesirableFunction);
-        } else {
+        if (vuln.UndesirableFunction.empty()) {
           sanitizeDivideByZero(&F);
+        } else {
+          sanitizeDivideByZeroInFunction(&F, vuln.UndesirableFunction);
         }
         break;
 
