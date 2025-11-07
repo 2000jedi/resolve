@@ -7,7 +7,7 @@ void sanitizeDivideByZero(llvm::Function *F);
 void sanitizeDivideByZeroRecover(llvm::Function *F);
 llvm::Function *replaceUndesirableFunction(llvm::Function *F,
                                            llvm::CallInst *call);
-void sanitizeDivideByZeroinFunction(llvm::Function *F,
+void sanitizeDivideByZeroInFunction(llvm::Function *F,
                                     std::optional<std::string> funct_name);
 void sanitizeIntOverflow(llvm::Function *F);
 void sanitizeIntOverflowRecover(llvm::Function *F);

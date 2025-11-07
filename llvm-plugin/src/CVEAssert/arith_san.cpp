@@ -405,7 +405,8 @@ void sanitizeDivideByZeroRecover(Function *F) {
 }
 
 Function *replaceUndesirableFunction(Function *F, CallInst *call) {
-  LLVMContext &Ctx = Ctx;
+  Module *M = F->getParent();
+  LLVMContext &Ctx = M->getContext();
   IRBuilder<> Builder(Ctx);
 
   Function *calledFunc = call->getCalledFunction();
@@ -414,10 +415,9 @@ Function *replaceUndesirableFunction(Function *F, CallInst *call) {
 
   // 1. Create the function name and type.
   std::string sanitizedHandlerName = "resolve_sanitized_function";
-
-  if (Function *existing_resolve_sanitize_func =
-          F->getParent()->getFunction(sanitizedHandlerName)) {
-    return existing_resolve_sanitize_func;
+  
+  if (Function* existing = M->getFunction(sanitizedHandlerName)) {
+    return existing;
   }
 
   FunctionType *sanitizedHandlerType = calledFunc->getFunctionType();
@@ -425,10 +425,10 @@ Function *replaceUndesirableFunction(Function *F, CallInst *call) {
   // Create the function object.
   Function *sanitizedHandlerFunc =
       Function::Create(sanitizedHandlerType, Function::InternalLinkage,
-                       sanitizedHandlerName, F->getParent());
+                       sanitizedHandlerName, M);
 
   Function *resolve_report_func =
-      getOrCreateResolveReportSanitizerTriggered(F->getParent());
+      getOrCreateResolveReportSanitizerTriggered(M);
 
   Function::arg_iterator argIter = sanitizedHandlerFunc->arg_begin();
   Value *dividend = argIter++;
@@ -468,9 +468,10 @@ Function *replaceUndesirableFunction(Function *F, CallInst *call) {
   return sanitizedHandlerFunc;
 }
 
-void sanitizeDivideByZeroinFunction(Function *F,
+void sanitizeDivideByZeroInFunction(Function *F,
                                     std::optional<std::string> funct_name) {
-  LLVMContext &Ctx = Ctx;
+  Module *M = F->getParent();
+  LLVMContext &Ctx = M->getContext();
   IRBuilder<> Builder(Ctx);
 
   // Container to store call insts
