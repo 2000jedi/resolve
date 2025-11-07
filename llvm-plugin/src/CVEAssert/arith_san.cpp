@@ -471,8 +471,8 @@ Function *replaceUndesirableFunction(Function *F, CallInst *call) {
   return sanitizedHandlerFunc;
 }
 
-void sanitizeDivideByZeroinFunction(Function *F,
-                                    std::optional<std::string> funct_name) {
+void sanitizeDivideByZeroInFunction(Function *F,
+                                    std::string funct_name) {
   Module *M = F->getParent();
   LLVMContext &Ctx = M->getContext();
   IRBuilder<> Builder(Ctx);
@@ -491,7 +491,7 @@ void sanitizeDivideByZeroinFunction(Function *F,
         }
 
         StringRef calledFuncName = calledFunc->getName();
-        if (calledFuncName == *funct_name) {
+        if (calledFuncName == funct_name) {
           callsToReplace.push_back(call);
         }
       }
