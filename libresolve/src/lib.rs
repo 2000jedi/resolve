@@ -14,6 +14,32 @@ use std::sync::Once;
 use crate::buffer_writer::{BufferWriter, DLSYM_FD, RESOLVE_LOG_FD, RESOLVE_ERR_LOG_FD, WRITTEN_JSON_HEADER};
 use crate::shadowobjs::{ShadowObject, AllocType, Vaddr, ALIVE_OBJ_LIST, FREED_OBJ_LIST};
 
+
+/**
+ * NOTE
+ * Libresolve supports adding shadow objects for stack objects
+ * but we do not currently support removing stack objects from 
+ * ALIVE_OBJ_LIST once the stack objects are freed at the end
+ * of a function scope
+ **/
+
+/**
+ * @brief - Allocator interface for stack objects
+ * @input - size of the pointer allocation in bytes 
+ * @return - none 
+ */
+#[unsafe(no_mangle)]
+pub extern "C" fn resolve_stack_obj(ptr: *mut c_void, size: usize) -> () {
+    let mut obj_list = ALIVE_OBJ_LIST.lock().expect("Mutex not poisoned");
+    obj_list.add_shadow_object(AllocType::Stack, ptr as Vaddr, size);
+
+    let mut buf = [0u8; 128];
+    let mut writer = BufferWriter::new(&mut buf);
+    let _ = writeln!(&mut writer, "[STACK] Logging stack allocated object: {}", ptr as Vaddr);
+    let written = writer.as_bytes();
+    unsafe {libc::write(*RESOLVE_LOG_FD, written.as_ptr() as *const _, written.len()) };
+}
+
 /**
  * @brief - Allocator logging interface for malloc 
  * @input - size of the allocation in bytes
