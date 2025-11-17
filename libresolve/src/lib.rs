@@ -11,6 +11,15 @@ use std::sync::Once;
 use crate::buffer_writer::{BufferWriter, DLSYM_FD, RESOLVE_LOG_FD, RESOLVE_ERR_LOG_FD, WRITTEN_JSON_HEADER};
 use crate::shadowobjs::{ShadowObject, AllocType, Vaddr, ALIVE_OBJ_LIST, FREED_OBJ_LIST};
 
+
+/**
+ * NOTE
+ * Libresolve supports adding shadow objects for stack objects
+ * but we do not currently support removing stack objects from 
+ * ALIVE_OBJ_LIST once the stack objects are freed at the end
+ * of a function scope
+ * /
+
 /**
  * @brief - Allocator interface for stack objects
  * @input - size of the pointer allocation in bytes 
