@@ -1,7 +1,12 @@
 SHELL := /bin/bash
 all: build
 
-build: build-llvm-plugin build-libresolve build-reach
+build: build-llvm-plugin build-libresolve build-reach build-clang-plugin
+
+build-clang-plugin:
+	mkdir -p clang-plugin/build
+	cmake -S clang-plugin -B clang-plugin/build
+	+$(MAKE) -C clang-plugin/build
 
 build-llvm-plugin: llvm-plugin build-libresolve
 	+$(MAKE) -C llvm-plugin
