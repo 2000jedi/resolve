@@ -8,4 +8,4 @@
 /// TODO: check whether the divisor can be zero
 std::pair<int, int> queryFPE(const clang::Stmt *s, clang::ASTContext &context);
 
-void FPEEmitJson(void);
+void FPEEmitJson(llvm::StringRef filename);

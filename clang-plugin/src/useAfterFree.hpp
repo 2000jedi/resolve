@@ -6,4 +6,4 @@
 /// TODO: check whether the divisor can be zero
 bool queryUAF(const clang::Stmt *s, clang::ASTContext &context);
 
-void UAFEmitJson(void);
+void UAFEmitJson(llvm::StringRef filename);

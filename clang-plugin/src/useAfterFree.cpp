@@ -82,11 +82,14 @@ bool queryUAF(const clang::Stmt *s, clang::ASTContext &context) {
   return callback.hasReturn;
 }
 
-void UAFEmitJson(void) {
+void UAFEmitJson(llvm::StringRef filename) {
   Json::StreamWriterBuilder builder;
   builder["indentation"] = "  ";
-  std::string output = Json::writeString(builder, ResultsToJson(UAFSummaries));
+  std::string output =
+      Json::writeString(builder, ResultsToJson(UAFSummaries, "Use After Free"));
 
-  FILE *f = fopen("uaf_results.json", "w");
+  std::string fname = filename.str() + ".jsonl";
+  FILE *f = fopen(fname.c_str(), "a");
   fputs(output.c_str(), f);
+  fputs("\n", f);
 }

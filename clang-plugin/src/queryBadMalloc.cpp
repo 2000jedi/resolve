@@ -188,11 +188,14 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
   return false;
 }
 
-void badMallocEmitJson(void) {
+void badMallocEmitJson(llvm::StringRef filename) {
   Json::StreamWriterBuilder builder;
   builder["indentation"] = "  ";
-  std::string output = Json::writeString(builder, ResultsToJson(mallocResults));
+  std::string output =
+      Json::writeString(builder, ResultsToJson(mallocResults, "Bad Malloc"));
 
-  FILE *f = fopen("bad_malloc_results.json", "w");
+  std::string fname = filename.str() + ".jsonl";
+  FILE *f = fopen(fname.c_str(), "a");
   fputs(output.c_str(), f);
+  fputs("\n", f);
 }

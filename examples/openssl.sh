@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 OPENSSL="https://github.com/openssl/openssl.git"
 
@@ -8,29 +8,30 @@ make -C "../"
 # get the OpenSSL repo
 if [ ! -d "openssl" ]; then
 
-    #    git clone https://github.com/openssl/openssl.git
-    git clone --branch openssl-3.5.0 --depth 1 $OPENSSL
+  #    git clone https://github.com/openssl/openssl.git
+  git clone --branch openssl-3.5.0 --depth 1 $OPENSSL
 fi
 
-cd openssl
+cd openssl || exit
 
 # Set compiler flags to use the EnhancedFacts pass
 export CC=clang
-export CXX=clang
-export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so -fsyntax-only -Xclang -load -Xclang ../../clang-plugin/build/libchecker.so -Xclang -plugin -Xclang check-ast"
+export CXX=clang++
+export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so -Xclang -load -Xclang ../../clang-plugin/build/libchecker.so -Xclang -add-plugin -Xclang check-ast -Xclang -plugin-arg-check-ast -Xclang ../openssl_vulnerabilities.json"
+# export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so"
 export CXXFLAGS="$CFLAGS"
 export LDLIBS="../../libresolve/target/debug/libresolve.so"
 
 # Run OpenSSL's build
 ./Configure
-make -j
+/usr/bin/time -v make -j8 # "$(nproc)"
 
 # return to the examples folder
 cd ..
 
 # Ensure we build new facts
 if [ -d "openssl_facts" ]; then
-    rm -r openssl_facts
+  rm -r openssl_facts
 fi
 mkdir openssl_facts
 
@@ -40,8 +41,8 @@ python3 ../linker/AnalysisEngine_linkmap.py --in_bin=openssl/libcrypto.so --out_
 
 # Run the reach-wrapper tool
 python3 ../reach-wrapper/reach-wrapper.py \
-    -i openssl_vulnerabilities.json \
-    -o openssl_reach_out.json \
-    -f openssl_facts \
-    -e "CMS_RecipientInfo_decrypt" \
-    -r ../reach/build/reach
+  -i openssl_vulnerabilities.json \
+  -o openssl_reach_out.json \
+  -f openssl_facts \
+  -e "CMS_RecipientInfo_decrypt" \
+  -r ../reach/build/reach
