@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <json/json.h>
 #include <vector>
@@ -8,7 +9,7 @@
 #include "useAfterFree.hpp"
 
 #define QUERY_BAD_MALLOC
-#define QUERY_FPE
+// #define QUERY_FPE
 #define QUERY_UAF
 
 using namespace clang;
@@ -59,7 +60,19 @@ public:
 #endif
 
 #ifdef QUERY_FPE
+    time_start = 
+        std::chrono::steady_clock::now();
     auto pair = queryFPE(FD->getBody(), Context);
+    time_end = 
+        std::chrono::steady_clock::now();
+    time_diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_start)
+            .count();
+    auto fpe_time = fopen("fpe_time.log", "a");
+    if (fpe_time) {
+      fprintf(fpe_time, "%ld\n", time_diff);
+      fclose(fpe_time);
+    }
     positive_div += pair.first;
     negative_div += pair.second;
 #endif
@@ -165,17 +178,16 @@ protected:
 static FrontendPluginRegistry::Add<WarnAST> X("check-ast",
                                               "Check AST for concerns");
 
-Json::Value ResultsToJson(std::vector<CheckResult> &Results,
+std::vector<Json::Value> ResultsToJson(std::vector<CheckResult> &Results,
                           std::string check) {
-  Json::Value result(Json::objectValue);
-  Json::Value results(Json::arrayValue);
+  std::vector<Json::Value> results;
   for (const auto &res : Results) {
     Json::Value item;
+    item["vulnerability_type"] = check;
     item["filename"] = res.filename;
     item["function_name"] = res.function_name;
     item["line_number"] = res.line_number;
-    results.append(item);
+    results.push_back(item);
   }
-  result[check] = results;
-  return result;
+  return results;
 }

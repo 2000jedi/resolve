@@ -4,10 +4,15 @@ __pycache__
 
 llvm-plugin/test/**/*.ll
 llvm-plugin/test/**/*.ll.mem
+llvm-plugin/tests/
 
 # ignore repos/outputs from tests
 examples/openssl/
 examples/openssl_facts/
 examples/openssl_reach_out.json
 
+# no vscode settings
+.vscode/
 
+# ignore compiler commands database
+compile_commands.json

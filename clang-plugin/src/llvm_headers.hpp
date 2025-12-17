@@ -24,5 +24,5 @@ struct CheckResult {
   int line_number = 0;
 };
 
-Json::Value ResultsToJson(std::vector<CheckResult> &Results, std::string check);
+std::vector<Json::Value> ResultsToJson(std::vector<CheckResult> &Results, std::string check);
 extern std::string function_name;

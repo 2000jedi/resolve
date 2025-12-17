@@ -13,9 +13,10 @@ std::vector<CheckResult> mallocResults;
 extern std::string function_name;
 
 bool isMalloc(const CallExpr *call) {
+  static const std::regex malloc_regex(".*malloc.*");
   if (const FunctionDecl *callee = call->getDirectCallee()) {
     std::string name = callee->getNameAsString();
-    if (regex_match(name, std::regex(".*malloc.*"))) {
+    if (regex_match(name, malloc_regex)) {
       return true;
     }
   }
@@ -189,13 +190,16 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
 }
 
 void badMallocEmitJson(llvm::StringRef filename) {
-  Json::StreamWriterBuilder builder;
-  builder["indentation"] = "  ";
-  std::string output =
-      Json::writeString(builder, ResultsToJson(mallocResults, "Bad Malloc"));
-
+  auto results = ResultsToJson(mallocResults, "Bad Malloc");
   std::string fname = filename.str() + ".jsonl";
   FILE *f = fopen(fname.c_str(), "a");
-  fputs(output.c_str(), f);
-  fputs("\n", f);
+  for (const auto &res : results) {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "  ";
+    std::string output = Json::writeString(builder, res);
+
+    fputs(output.c_str(), f);
+    fputs("\n", f);
+  }
+  fclose(f);
 }

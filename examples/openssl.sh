@@ -7,7 +7,6 @@ make -C "../"
 
 # get the OpenSSL repo
 if [ ! -d "openssl" ]; then
-
   #    git clone https://github.com/openssl/openssl.git
   git clone --branch openssl-3.5.0 --depth 1 $OPENSSL
 fi
@@ -17,14 +16,23 @@ cd openssl || exit
 # Set compiler flags to use the EnhancedFacts pass
 export CC=clang
 export CXX=clang++
-export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so -Xclang -load -Xclang ../../clang-plugin/build/libchecker.so -Xclang -add-plugin -Xclang check-ast -Xclang -plugin-arg-check-ast -Xclang ../openssl_vulnerabilities.json"
-# export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so"
+export CFLAGS="-fpass-plugin=../../llvm-plugin/build/libEnhancedFacts.so"
+export CFLAGS+=" -Xclang -load -Xclang ../../clang-plugin/build/libchecker.so -Xclang -add-plugin -Xclang check-ast"
+# export CFLAGS+=" -Xclang -plugin-arg-check-ast -Xclang ../openssl_vulnerabilities.json"
 export CXXFLAGS="$CFLAGS"
 export LDLIBS="../../libresolve/target/debug/libresolve.so"
 
+echo "CFLAGS=$CFLAGS"
+
+# Clean any previous builds
+rm ./**/*.jsonl || true
+
 # Run OpenSSL's build
 ./Configure
-/usr/bin/time -v make -j8 # "$(nproc)"
+/usr/bin/time -f "# Performance Metric:\n#   Total Time: %e\n#   User Time: %U\n#   Memory (Max RSS): %M KiB" \
+  make -j8 # "$(nproc)"
+
+cat **/*.jsonl > ../openssl_vulnerabilities.jsonl
 
 # return to the examples folder
 cd ..

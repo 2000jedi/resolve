@@ -15,9 +15,8 @@ message(STATUS "Found Clang ${Clang_PACKAGE_VERSION}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Add debug flag for debugging builds
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -DDEBUG")
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2")
 
 # Find all source (.cpp) files in the src directory
 file(GLOB SRC_FILES
@@ -37,7 +36,7 @@ add_library(checker SHARED
 )
 
 # Link to clang libraries we need
-target_link_libraries(checker PRIVATE clang-cpp jsoncpp_lib)
+target_link_libraries(checker PRIVATE clang-cpp jsoncpp_lib tcmalloc)
 
 # Ensure proper include paths and compile flags from clang
 set_target_properties(checker PROPERTIES

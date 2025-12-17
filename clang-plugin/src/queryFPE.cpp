@@ -97,13 +97,16 @@ std::pair<int, int> queryFPE(const clang::Stmt *s, clang::ASTContext &context) {
 }
 
 void FPEEmitJson(llvm::StringRef filename) {
-  Json::StreamWriterBuilder builder;
-  builder["indentation"] = "  ";
-  std::string output =
-      Json::writeString(builder, ResultsToJson(FPEResults, "Divide by Zero"));
-
+  auto results = ResultsToJson(FPEResults, "Divide by Zero");
   std::string fname = filename.str() + ".jsonl";
   FILE *f = fopen(fname.c_str(), "a");
-  fputs(output.c_str(), f);
-  fputs("\n", f);
+  for (const auto &res : results) {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "  ";
+    std::string output = Json::writeString(builder, res);
+
+    fputs(output.c_str(), f);
+    fputs("\n", f);
+  }
+  fclose(f);
 }
