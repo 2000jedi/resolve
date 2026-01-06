@@ -6,11 +6,13 @@
 #include "llvm_headers.hpp"
 #include "queryBadMalloc.hpp"
 #include "queryFPE.hpp"
+#include "queryNullPointerDeref.hpp"
 #include "useAfterFree.hpp"
 
 #define QUERY_BAD_MALLOC
 // #define QUERY_FPE
 #define QUERY_UAF
+#define QUERY_NPD
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -81,6 +83,10 @@ public:
     queryUAF(FD->getBody(), Context);
 #endif
 
+#ifdef QUERY_NPD
+    queryNPD(FD->getBody(), Context);
+#endif
+
     return true;
   }
 
@@ -119,6 +125,10 @@ public:
 
 #ifdef QUERY_UAF
     UAFEmitJson(fileRef);
+#endif
+
+#ifdef QUERY_NPD
+    NPDEmitJson(fileRef);
 #endif
   }
 

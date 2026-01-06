@@ -36,7 +36,7 @@ add_library(checker SHARED
 )
 
 # Link to clang libraries we need
-target_link_libraries(checker PRIVATE clang-cpp jsoncpp_lib tcmalloc)
+target_link_libraries(checker PRIVATE clang-cpp jsoncpp_lib)
 
 # Ensure proper include paths and compile flags from clang
 set_target_properties(checker PROPERTIES
