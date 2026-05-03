@@ -24,13 +24,19 @@ file(GLOB SRC_FILES
     "src/*.cpp"
 )
 
+# Exclude standalone plugin entry-points: they define their own
+# `function_name` and FrontendPluginRegistry::Add, which would
+# collide when linked into libchecker.so alongside Checker.cpp.
+list(FILTER SRC_FILES EXCLUDE REGEX ".*search_malloc_plugin\\.cpp$")
+list(FILTER SRC_FILES EXCLUDE REGEX ".*search_um_plugin\\.cpp$")
+
 # Find all header (.hpp) files in the src directory
 file(GLOB HDR_FILES
     CONFIGURE_DEPENDS
     "src/*.hpp"
 )
 
-add_library(checker SHARED 
+add_library(checker SHARED
     ${SRC_FILES}
     ${HDR_FILES}
 )

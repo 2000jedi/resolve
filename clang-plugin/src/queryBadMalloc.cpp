@@ -10,6 +10,10 @@ using namespace clang::ast_matchers;
 
 std::vector<CheckResult> mallocResults;
 
+static BadMallocSink g_sink = nullptr;
+
+void setBadMallocSink(BadMallocSink sink) { g_sink = std::move(sink); }
+
 extern std::string function_name;
 
 bool isMalloc(const CallExpr *call) {
@@ -111,6 +115,10 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
 }
 
 void emitBadMallocDiag(const Stmt *call, ASTContext &context) {
+  if (g_sink) {
+    g_sink(call, context);
+    return;
+  }
   auto loc = call->getBeginLoc();
   auto filename = context.getSourceManager().getFilename(loc).str();
   if (filename == "") {
