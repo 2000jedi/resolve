@@ -53,3 +53,40 @@ add_custom_command(TARGET checker POST_BUILD
         ${CMAKE_SOURCE_DIR}/../compile_commands.json
     COMMENT "Copying compile_commands.json to project root"
 )
+
+# ── cpath baseline plugins ──────────────────────────────────────────────────
+# Two standalone PluginASTAction libraries used by the cpath benchmark suite.
+# Each loads independently via clang -Xclang -load.
+
+# Common code only — csv_writer + helper.  queryBadMalloc.cpp is NOT
+# in the common lib because it references `extern std::string function_name`,
+# which only the search_um plugin defines.  Linking it into search_malloc
+# would leave that symbol unresolved.
+add_library(cpath_baseline_common STATIC
+    src/csv_writer.cpp
+    src/helper.cpp
+)
+set_target_properties(cpath_baseline_common PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    CXX_STANDARD 17
+)
+target_link_libraries(cpath_baseline_common PRIVATE clang-cpp jsoncpp_lib)
+target_include_directories(cpath_baseline_common PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(cpath_baseline_common PRIVATE ${LLVM_DEFINITIONS})
+
+add_library(search_malloc SHARED src/search_malloc_plugin.cpp)
+target_link_libraries(search_malloc PRIVATE
+    cpath_baseline_common clang-cpp jsoncpp_lib)
+target_include_directories(search_malloc PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(search_malloc PRIVATE ${LLVM_DEFINITIONS})
+
+# search_um pulls queryBadMalloc.cpp directly so it gets the analysis;
+# the source file is also compiled (separately) into libchecker.so via
+# its src/*.cpp glob — harmless, the two .so files are independent.
+add_library(search_um SHARED
+    src/search_um_plugin.cpp
+    src/queryBadMalloc.cpp)
+target_link_libraries(search_um PRIVATE
+    cpath_baseline_common clang-cpp jsoncpp_lib)
+target_include_directories(search_um PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(search_um PRIVATE ${LLVM_DEFINITIONS})
