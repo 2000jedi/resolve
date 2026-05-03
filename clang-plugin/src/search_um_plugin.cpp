@@ -81,10 +81,26 @@ public:
             if (filename.empty()) return;
             int line = SM.getSpellingLineNumber(loc);
             int col  = SM.getSpellingColumnNumber(loc);
-            CharSourceRange range = CharSourceRange::getTokenRange(
-                call->getSourceRange());
+            // Resolve macro-internal range endpoints to file locs so
+            // getSourceText returns the user-visible call text (e.g.
+            // "pemalloc(n)") instead of empty when the call is reached
+            // via a #define wrapper.  makeFileCharRange handles
+            // function-like macros where the entire call expands from
+            // the macro arguments; for calls buried *inside* a multi-
+            // statement macro body it returns an invalid/degenerate
+            // range.  In that case fall back to the macro invocation's
+            // expansion range (e.g. "MERGE_FORMATS(...)").
+            CharSourceRange range = Lexer::makeFileCharRange(
+                CharSourceRange::getTokenRange(call->getSourceRange()),
+                SM, ctx.getLangOpts());
             std::string snippet = Lexer::getSourceText(
                 range, SM, ctx.getLangOpts()).str();
+            if (snippet.empty() && call->getBeginLoc().isMacroID()) {
+                CharSourceRange exp = SM.getExpansionRange(
+                    call->getSourceRange());
+                snippet = Lexer::getSourceText(
+                    exp, SM, ctx.getLangOpts()).str();
+            }
             cpath_baseline::appendCsvRow(
                 g_outPath, filename, line, col,
                 function_name, "unchecked-malloc", snippet);

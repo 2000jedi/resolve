@@ -74,10 +74,24 @@ void collectMallocCalls(const Stmt *s, ASTContext &context) {
             if (loc.isValid() && !SM.isInSystemHeader(loc)) {
                 std::string filename = SM.getFilename(loc).str();
                 if (!filename.empty()) {
-                    CharSourceRange range = CharSourceRange::getTokenRange(
-                        call->getSourceRange());
+                    // Resolve macro-internal range endpoints to file locs
+                    // so getSourceText returns the user-visible call text
+                    // (e.g. "pemalloc(n)" rather than empty for an inner
+                    // malloc reached via a #define wrapper).  For calls
+                    // buried inside a multi-statement macro body the
+                    // file-char-range collapses to a degenerate range —
+                    // fall back to the macro invocation's expansion range.
+                    CharSourceRange range = Lexer::makeFileCharRange(
+                        CharSourceRange::getTokenRange(call->getSourceRange()),
+                        SM, context.getLangOpts());
                     std::string snippet = Lexer::getSourceText(
                         range, SM, context.getLangOpts()).str();
+                    if (snippet.empty() && call->getBeginLoc().isMacroID()) {
+                        CharSourceRange exp = SM.getExpansionRange(
+                            call->getSourceRange());
+                        snippet = Lexer::getSourceText(
+                            exp, SM, context.getLangOpts()).str();
+                    }
                     g_results.push_back({
                         filename,
                         (int)SM.getSpellingLineNumber(loc),
