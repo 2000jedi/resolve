@@ -43,4 +43,21 @@ fi
 echo "OK   search_um: 1 row"
 
 rm -f "$SM_OUT" "$UM_OUT"
+
+# ── parity T1: calloc is now flagged ───────────────────────────────────
+T1_OUT="$(mktemp)"
+clang -fsyntax-only \
+      -Xclang -load -Xclang "$BUILD/libsearch_um.so" \
+      -Xclang -plugin -Xclang search-um \
+      -Xclang -plugin-arg-search-um -Xclang "$T1_OUT" \
+      "$ROOT/tests/parity/fixture_calloc.c"
+t1_rows=$(tail -n +2 "$T1_OUT" | wc -l)
+if [[ "$t1_rows" -ne 1 ]]; then
+    echo "FAIL parity T1 (calloc): expected 1 row, got $t1_rows" >&2
+    cat "$T1_OUT" >&2
+    exit 1
+fi
+echo "OK   parity T1 (calloc): 1 row"
+rm -f "$T1_OUT"
+
 echo "All smoke checks passed."

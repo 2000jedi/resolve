@@ -8,6 +8,10 @@
 using namespace clang;
 using namespace clang::ast_matchers;
 
+// foo = malloc(...);
+// if (foo == NULL) { ... }
+// if (foo) { ... }
+
 std::vector<CheckResult> mallocResults;
 
 static BadMallocSink g_sink = nullptr;
@@ -17,7 +21,9 @@ void setBadMallocSink(BadMallocSink sink) { g_sink = std::move(sink); }
 extern std::string function_name;
 
 bool isMalloc(const CallExpr *call) {
-  static const std::regex malloc_regex(".*malloc.*");
+  // bm.yaml uses `where: $ALLOC =~ .*alloc.*` — match that.  Picks up
+  // calloc, realloc, xmalloc, apr_palloc, av_buffer_alloc, _TIFFmalloc, etc.
+  static const std::regex malloc_regex(".*alloc.*");
   if (const FunctionDecl *callee = call->getDirectCallee()) {
     std::string name = callee->getNameAsString();
     if (regex_match(name, malloc_regex)) {
@@ -71,7 +77,6 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
                    hasOperatorName("!"),
                    hasUnaryOperand(ignoringParenImpCasts(
                        declRefExpr(to(varDecl(equalsNode(var)).bind("var")))))
-
                        )))
             .bind("if"),
         &callback);
@@ -129,12 +134,6 @@ void emitBadMallocDiag(const Stmt *call, ASTContext &context) {
       function_name,
       (int)context.getSourceManager().getSpellingLineNumber(loc),
   });
-  /*
-  unsigned DiagID = context.getDiagnostics().getCustomDiagID(
-      DiagnosticsEngine::Warning,
-      "malloc call result is not checked against NULL");
-  context.getDiagnostics().Report(call->getBeginLoc(), DiagID);
-  */
 }
 
 /// Look for malloc calls in the statement tree
@@ -196,6 +195,8 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
   }
   return false;
 }
+
+// 1000 ms for each file -> 1 ms for each file.
 
 void badMallocEmitJson(llvm::StringRef filename) {
   auto results = ResultsToJson(mallocResults, "Bad Malloc");
