@@ -80,6 +80,14 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
                        )))
             .bind("if"),
         &callback);
+    // Bare-truthy null-check: `if (var) { ... }` — bm.yaml's `if ($V)`
+    // not_seq/not_in form.  Without this, the cleanup-only idiom
+    // `p = malloc(); if (p) free(p);` would be reported as unchecked.
+    finder.addMatcher(
+        ifStmt(hasCondition(ignoringParenImpCasts(
+                   declRefExpr(to(varDecl(equalsNode(var)).bind("var"))))))
+            .bind("if"),
+        &callback);
   } else {
     DeclRefExpr *base;
     if (auto cast = dyn_cast<ImplicitCastExpr>(mem->getBase())) {
@@ -108,6 +116,12 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
         ifStmt(hasCondition(unaryOperator(hasOperatorName("!"),
                                           hasUnaryOperand(ignoringParenImpCasts(
                                               MemberMatcher.bind("var"))))))
+            .bind("if"),
+        &callback);
+    // Bare-truthy form for member-access LHS: `if (s->f) { ... }`.
+    finder.addMatcher(
+        ifStmt(hasCondition(ignoringParenImpCasts(
+                   MemberMatcher.bind("var"))))
             .bind("if"),
         &callback);
   }

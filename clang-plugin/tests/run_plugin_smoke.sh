@@ -76,4 +76,20 @@ fi
 echo "OK   parity T2 (decl-init): 1 row"
 rm -f "$T2_OUT"
 
+# ── parity T3: bare `if($V)` cleanup is now suppressed ──────────────────
+T3_OUT="$(mktemp)"
+clang -fsyntax-only \
+      -Xclang -load -Xclang "$BUILD/libsearch_um.so" \
+      -Xclang -plugin -Xclang search-um \
+      -Xclang -plugin-arg-search-um -Xclang "$T3_OUT" \
+      "$ROOT/tests/parity/fixture_cleanup_check.c"
+t3_rows=$(tail -n +2 "$T3_OUT" 2>/dev/null | wc -l)
+if [[ "$t3_rows" -ne 0 ]]; then
+    echo "FAIL parity T3 (cleanup-only if(p)): expected 0 rows, got $t3_rows" >&2
+    cat "$T3_OUT" >&2
+    exit 1
+fi
+echo "OK   parity T3 (cleanup if(p)): 0 rows"
+rm -f "$T3_OUT"
+
 echo "All smoke checks passed."
