@@ -4,9 +4,10 @@ all: build
 build: build-llvm-plugin build-libresolve build-reach build-clang-plugin
 
 build-clang-plugin:
-	mkdir -p clang-plugin/build
-	cmake -S clang-plugin -B clang-plugin/build -GNinja
-	cmake --build clang-plugin/build
+	cd clang-plugin && nix develop -c bash -c '\
+		mkdir -p build && \
+		cmake -S . -B build -GNinja && \
+		cmake --build build'
 
 build-llvm-plugin: llvm-plugin build-libresolve
 	+$(MAKE) -C llvm-plugin

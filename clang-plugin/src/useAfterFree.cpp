@@ -115,52 +115,6 @@ bool queryUAF(const clang::Stmt *s, clang::ASTContext &context) {
   return false;
 }
 
-#if 0
-bool queryUAF(const clang::Stmt *s, clang::ASTContext &context) {
-  class FreeCallback : public MatchFinder::MatchCallback {
-  public:
-    bool hasReturn = false;
-    ASTContext &context;
-    FreeCallback(ASTContext &ctx) : context(ctx) {}
-    void run(const MatchFinder::MatchResult &Result) override {
-      if (this->hasReturn)
-        return;
-      if (const DeclRefExpr *arg =
-      Result.Nodes.getNodeAs<DeclRefExpr>("arg")) {
-        if (visitedDeclRefs.find(arg) != visitedDeclRefs.end()) {
-          return;
-        }
-        visitedDeclRefs.insert(arg);
-        auto hasReturn = isReturned(arg->getDecl(), context);
-        if (hasReturn) {
-          auto loc = arg->getBeginLoc();
-          auto filename =
-          context.getSourceManager().getFilename(loc).str(); if (filename
-          == "") {
-            return;
-          }
-          UAFSummaries.push_back(CheckResult{
-              filename,
-              function_name,
-              (int)context.getSourceManager().getSpellingLineNumber(loc),
-          });
-        }
-        this->hasReturn = (!!hasReturn);
-      }
-    }
-  };
-
-  MatchFinder finder;
-  FreeCallback callback(context);
-  finder.addMatcher(callExpr(callee(functionDecl(hasName("free"))),
-                             hasArgument(0, expr().bind("arg"))),
-                    &callback);
-  finder.matchAST(context);
-
-  return callback.hasReturn;
-}
-#endif
-
 void UAFEmitJson(llvm::StringRef filename) {
   auto results = ResultsToJson(UAFSummaries, "Use After Free");
   std::string fname = filename.str() + ".jsonl";

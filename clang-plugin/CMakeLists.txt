@@ -49,7 +49,7 @@ set_target_properties(checker PROPERTIES
     CXX_STANDARD 17
     POSITION_INDEPENDENT_CODE ON
 )
-target_include_directories(checker PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(checker PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_compile_definitions(checker PRIVATE ${LLVM_DEFINITIONS})
 
 # Copy compile_commands.json to project root for IDE support
@@ -71,19 +71,20 @@ add_custom_command(TARGET checker POST_BUILD
 add_library(cpath_baseline_common STATIC
     src/csv_writer.cpp
     src/helper.cpp
+    src/results_json.cpp
 )
 set_target_properties(cpath_baseline_common PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     CXX_STANDARD 17
 )
 target_link_libraries(cpath_baseline_common PRIVATE clang-cpp jsoncpp_lib)
-target_include_directories(cpath_baseline_common PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(cpath_baseline_common PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_compile_definitions(cpath_baseline_common PRIVATE ${LLVM_DEFINITIONS})
 
 add_library(search_malloc SHARED src/search_malloc_plugin.cpp)
 target_link_libraries(search_malloc PRIVATE
     cpath_baseline_common clang-cpp jsoncpp_lib)
-target_include_directories(search_malloc PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(search_malloc PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_compile_definitions(search_malloc PRIVATE ${LLVM_DEFINITIONS})
 
 # search_um pulls queryBadMalloc.cpp directly so it gets the analysis;
@@ -94,5 +95,5 @@ add_library(search_um SHARED
     src/queryBadMalloc.cpp)
 target_link_libraries(search_um PRIVATE
     cpath_baseline_common clang-cpp jsoncpp_lib)
-target_include_directories(search_um PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(search_um PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_compile_definitions(search_um PRIVATE ${LLVM_DEFINITIONS})

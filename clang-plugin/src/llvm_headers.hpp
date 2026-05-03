@@ -12,7 +12,7 @@
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <json/json.h>
-#include <llvm-18/llvm/Support/Casting.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 
 void panic(std::string msg, clang::ASTContext &context,

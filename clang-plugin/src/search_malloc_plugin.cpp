@@ -26,9 +26,14 @@
 using namespace clang;
 
 // Satisfies the `extern std::string function_name;` declared in
-// llvm_headers.hpp.  This .so is loaded standalone (not alongside
-// libchecker.so), so nothing else defines it.
-std::string function_name;
+// llvm_headers.hpp.  Marked hidden so this symbol does NOT participate
+// in cross-.so resolution: when both libsearch_malloc.so and
+// libsearch_um.so are loaded into the same clang process (e.g. via
+// CFLAGS that names both via `-Xclang -load`), default-visibility
+// file-scope globals get merged by the dynamic linker — and on
+// process exit BOTH destructors then run on the same memory →
+// double-free → SIGABRT in __run_exit_handlers.
+__attribute__((visibility("hidden"))) std::string function_name;
 
 namespace {
 
