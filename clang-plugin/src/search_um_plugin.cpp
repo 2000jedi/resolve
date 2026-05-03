@@ -71,6 +71,12 @@ public:
             const SourceManager &SM = ctx.getSourceManager();
             SourceLocation loc = call->getBeginLoc();
             if (!loc.isValid()) return;
+            // Macro-expanded calls (e.g. `#define SQLITE_MALLOC malloc;
+            // SQLITE_MALLOC(n)`) have a macro-ID begin loc whose
+            // getFilename() returns "".  Resolve to the expansion site.
+            if (loc.isMacroID()) {
+                loc = SM.getExpansionLoc(loc);
+            }
             std::string filename = SM.getFilename(loc).str();
             if (filename.empty()) return;
             int line = SM.getSpellingLineNumber(loc);

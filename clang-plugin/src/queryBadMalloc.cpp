@@ -148,15 +148,22 @@ void emitBadMallocDiag(const Stmt *call, ASTContext &context) {
     g_sink(call, context);
     return;
   }
+  const SourceManager &SM = context.getSourceManager();
   auto loc = call->getBeginLoc();
-  auto filename = context.getSourceManager().getFilename(loc).str();
+  // Resolve macro-expanded calls to their call site so getFilename()
+  // returns the user's .c file instead of "" — see the parallel fix
+  // in search_malloc_plugin.cpp / search_um_plugin.cpp.
+  if (loc.isMacroID()) {
+    loc = SM.getExpansionLoc(loc);
+  }
+  auto filename = SM.getFilename(loc).str();
   if (filename == "") {
     return;
   }
   mallocResults.push_back(CheckResult{
       filename,
       function_name,
-      (int)context.getSourceManager().getSpellingLineNumber(loc),
+      (int)SM.getSpellingLineNumber(loc),
   });
 }
 

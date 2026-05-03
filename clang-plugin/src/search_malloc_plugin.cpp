@@ -63,6 +63,14 @@ void collectMallocCalls(const Stmt *s, ASTContext &context) {
         if (isLiteralMalloc(call)) {
             const SourceManager &SM = context.getSourceManager();
             SourceLocation loc = call->getBeginLoc();
+            // For calls expanded from a macro (e.g. `#define SQLITE_MALLOC
+            // malloc; SQLITE_MALLOC(n)`), getBeginLoc() returns a macro-ID
+            // location for which getFilename() returns "".  Resolve to the
+            // expansion location (the call site in the user's .c file) so
+            // we record the user-visible position, not the #define line.
+            if (loc.isMacroID()) {
+                loc = SM.getExpansionLoc(loc);
+            }
             if (loc.isValid() && !SM.isInSystemHeader(loc)) {
                 std::string filename = SM.getFilename(loc).str();
                 if (!filename.empty()) {
