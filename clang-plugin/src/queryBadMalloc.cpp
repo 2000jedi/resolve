@@ -149,9 +149,13 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
     if (is_malloc) {
       // Look for assigned variable
 
+      // Admit both Stmt and Decl parents so we reach VarDecl in the
+      // declaration-with-initializer form `T *p = malloc(n);`.  bm.yaml
+      // covers this via `$T $V = $ALLOC(...)`; the previous Stmt-only
+      // filter silently missed it.
       std::vector<const DynTypedNode *> queue;
       for (auto parent : context.getParents(*child)) {
-        if (parent.get<Stmt>()) {
+        if (parent.get<Stmt>() || parent.get<Decl>()) {
           queue.push_back(&parent);
         }
       }

@@ -60,4 +60,20 @@ fi
 echo "OK   parity T1 (calloc): 1 row"
 rm -f "$T1_OUT"
 
+# ── parity T2: decl-with-initializer is now flagged ─────────────────────
+T2_OUT="$(mktemp)"
+clang -fsyntax-only \
+      -Xclang -load -Xclang "$BUILD/libsearch_um.so" \
+      -Xclang -plugin -Xclang search-um \
+      -Xclang -plugin-arg-search-um -Xclang "$T2_OUT" \
+      "$ROOT/tests/parity/fixture_decl_init.c"
+t2_rows=$(tail -n +2 "$T2_OUT" | wc -l)
+if [[ "$t2_rows" -ne 1 ]]; then
+    echo "FAIL parity T2 (decl-init): expected 1 row, got $t2_rows" >&2
+    cat "$T2_OUT" >&2
+    exit 1
+fi
+echo "OK   parity T2 (decl-init): 1 row"
+rm -f "$T2_OUT"
+
 echo "All smoke checks passed."
