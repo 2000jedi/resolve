@@ -92,4 +92,20 @@ fi
 echo "OK   parity T3 (cleanup if(p)): 0 rows"
 rm -f "$T3_OUT"
 
+# ── parity T4: pre-malloc check no longer suppresses post-malloc use ────
+T4_OUT="$(mktemp)"
+clang -fsyntax-only \
+      -Xclang -load -Xclang "$BUILD/libsearch_um.so" \
+      -Xclang -plugin -Xclang search-um \
+      -Xclang -plugin-arg-search-um -Xclang "$T4_OUT" \
+      "$ROOT/tests/parity/fixture_pre_malloc_check.c"
+t4_rows=$(tail -n +2 "$T4_OUT" | wc -l)
+if [[ "$t4_rows" -ne 1 ]]; then
+    echo "FAIL parity T4 (pre-malloc check): expected 1 row, got $t4_rows" >&2
+    cat "$T4_OUT" >&2
+    exit 1
+fi
+echo "OK   parity T4 (pre-malloc check): 1 row"
+rm -f "$T4_OUT"
+
 echo "All smoke checks passed."

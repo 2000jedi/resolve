@@ -18,9 +18,12 @@ using BadMallocSink =
 /// (static-vector) behaviour used by the legacy `checker` target.
 void setBadMallocSink(BadMallocSink sink);
 
-/// Look for malloc calls in the statement tree.
-/// If found, look for parent VarDecl and check if it is checked against NULL.
-bool queryBadMalloc(const clang::Stmt *s, clang::ASTContext &context);
+/// Look for malloc calls in the statement tree.  `enclosingFunc` is
+/// the FunctionDecl that owns `s` — used to scope the null-check
+/// search to that function and to enforce after-malloc ordering.
+bool queryBadMalloc(const clang::Stmt *s,
+                    clang::ASTContext &context,
+                    const clang::FunctionDecl *enclosingFunc);
 
 /// JSONL emit (legacy path).  No-op when the sink override is in use
 /// because findings never landed in `mallocResults`.

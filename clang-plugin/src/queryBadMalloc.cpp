@@ -37,25 +37,27 @@ bool isMalloc(const CallExpr *call) {
 class BadRefExprCallback : public MatchFinder::MatchCallback {
 public:
   int count = 0;
+  SourceLocation mallocLoc;
+  const SourceManager *SM = nullptr;
 
   void run(const MatchFinder::MatchResult &Result) override {
+    const IfStmt *ifStmt = Result.Nodes.getNodeAs<IfStmt>("if");
+    if (!ifStmt || !SM)
+      return;
+    // bm.yaml not_seq semantics: only count if-stmts that occur strictly
+    // after the malloc call.  A pre-malloc check on the same variable
+    // (e.g. `if (p == 0); p = malloc(n);`) does NOT count.
+    if (!SM->isBeforeInTranslationUnit(mallocLoc, ifStmt->getBeginLoc()))
+      return;
     count += 1;
-    if (const IfStmt *ifStmt = Result.Nodes.getNodeAs<IfStmt>("if")) {
-      std::string varName;
-      if (auto var = Result.Nodes.getNodeAs<VarDecl>("var"))
-        varName = var->getName();
-      else {
-        if (auto var = Result.Nodes.getNodeAs<MemberExpr>("var")) {
-          varName = var->getMemberNameInfo().getAsString();
-        }
-      }
-    }
   }
 };
 
 /// Check if the variable is checked against NULL in any if statement.
 /// @returns true if not checked, false if checked.
 bool findBadRefExpr(const VarDecl *var, ASTContext &context,
+                    const FunctionDecl *enclosingFunc,
+                    SourceLocation mallocLoc,
                     const MemberExpr *mem = nullptr) {
   MatchFinder finder;
   BadRefExprCallback callback;
@@ -65,7 +67,8 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
 
   if (!mem) {
     finder.addMatcher(
-        ifStmt(hasCondition(binaryOperator(
+        ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+               hasCondition(binaryOperator(
                    CMPMatcher,
                    hasEitherOperand(ignoringParenImpCasts(
                        declRefExpr(to(varDecl(equalsNode(var)).bind("var"))))),
@@ -73,7 +76,8 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
             .bind("if"),
         &callback);
     finder.addMatcher(
-        ifStmt(hasCondition(unaryOperator(
+        ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+               hasCondition(unaryOperator(
                    hasOperatorName("!"),
                    hasUnaryOperand(ignoringParenImpCasts(
                        declRefExpr(to(varDecl(equalsNode(var)).bind("var")))))
@@ -84,7 +88,8 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
     // not_seq/not_in form.  Without this, the cleanup-only idiom
     // `p = malloc(); if (p) free(p);` would be reported as unchecked.
     finder.addMatcher(
-        ifStmt(hasCondition(ignoringParenImpCasts(
+        ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+               hasCondition(ignoringParenImpCasts(
                    declRefExpr(to(varDecl(equalsNode(var)).bind("var"))))))
             .bind("if"),
         &callback);
@@ -105,7 +110,8 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
     auto MemberMatcher =
         memberExpr(hasDeclaration(fieldDecl(equalsNode(mem->getMemberDecl()))),
                    hasObjectExpression(BaseMatcher));
-    finder.addMatcher(ifStmt(hasCondition(binaryOperator(
+    finder.addMatcher(ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+                             hasCondition(binaryOperator(
                                  CMPMatcher,
                                  hasEitherOperand(ignoringParenImpCasts(
                                      MemberMatcher.bind("var"))),
@@ -113,19 +119,23 @@ bool findBadRefExpr(const VarDecl *var, ASTContext &context,
                           .bind("if"),
                       &callback);
     finder.addMatcher(
-        ifStmt(hasCondition(unaryOperator(hasOperatorName("!"),
+        ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+               hasCondition(unaryOperator(hasOperatorName("!"),
                                           hasUnaryOperand(ignoringParenImpCasts(
                                               MemberMatcher.bind("var"))))))
             .bind("if"),
         &callback);
     // Bare-truthy form for member-access LHS: `if (s->f) { ... }`.
     finder.addMatcher(
-        ifStmt(hasCondition(ignoringParenImpCasts(
+        ifStmt(hasAncestor(functionDecl(equalsNode(enclosingFunc))),
+               hasCondition(ignoringParenImpCasts(
                    MemberMatcher.bind("var"))))
             .bind("if"),
         &callback);
   }
 
+  callback.mallocLoc = mallocLoc;
+  callback.SM = &context.getSourceManager();
   finder.matchAST(context);
   if (callback.count == 0) {
     return true;
@@ -152,14 +162,15 @@ void emitBadMallocDiag(const Stmt *call, ASTContext &context) {
 
 /// Look for malloc calls in the statement tree
 /// If found, look for parent VarDecl and check if it is checked against NULL
-bool queryBadMalloc(const Stmt *s, ASTContext &context) {
+bool queryBadMalloc(const Stmt *s, ASTContext &context,
+                    const FunctionDecl *enclosingFunc) {
   if (!s)
     return false;
   if (const CallExpr *call = dyn_cast<CallExpr>(s)) {
     return isMalloc(call);
   }
   for (auto child : s->children()) {
-    bool is_malloc = queryBadMalloc(child, context);
+    bool is_malloc = queryBadMalloc(child, context, enclosingFunc);
     if (is_malloc) {
       // Look for assigned variable
 
@@ -177,7 +188,8 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
         auto node = queue.back();
         queue.pop_back();
         if (auto stmt = node->get<VarDecl>()) {
-          if (findBadRefExpr(stmt, context)) {
+          if (findBadRefExpr(stmt, context, enclosingFunc,
+                             s->getBeginLoc())) {
             emitBadMallocDiag(s, context);
           }
           return false;
@@ -188,7 +200,8 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
             // variable.
             if (auto lhs = dyn_cast<DeclRefExpr>(stmt->getLHS())) {
               if (auto var = dyn_cast<VarDecl>(lhs->getDecl())) {
-                if (findBadRefExpr(var, context)) {
+                if (findBadRefExpr(var, context, enclosingFunc,
+                                 s->getBeginLoc())) {
                   emitBadMallocDiag(s, context);
                 }
                 return false;
@@ -198,7 +211,8 @@ bool queryBadMalloc(const Stmt *s, ASTContext &context) {
             // We also need to handle member expressions,
             // e.g., f->a = malloc(...)
             if (auto lhs = dyn_cast<MemberExpr>(stmt->getLHS())) {
-              if (findBadRefExpr(nullptr, context, lhs)) {
+              if (findBadRefExpr(nullptr, context, enclosingFunc,
+                                 s->getBeginLoc(), lhs)) {
                 emitBadMallocDiag(s, context);
               }
               return false;

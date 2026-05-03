@@ -51,7 +51,7 @@ public:
             return true;
         }
         function_name = FD->getNameInfo().getName().getAsString();
-        queryBadMalloc(FD->getBody(), Context);
+        queryBadMalloc(FD->getBody(), Context, FD);
         return true;
     }
 

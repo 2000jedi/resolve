@@ -11,8 +11,8 @@
 
 #define QUERY_BAD_MALLOC
 // #define QUERY_FPE
-#define QUERY_UAF
-#define QUERY_NPD
+// #define QUERY_UAF
+// #define QUERY_NPD
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -50,31 +50,18 @@ public:
     bool isSystem = SM.isInSystemHeader(Loc);
     bool hasLocation = Loc.isValid();
     if (isSystem || !hasLocation) {
-      // llvm::outs() << "Skipping function: "
-      //              << FD->getNameInfo().getName().getAsString() << "\n";
       return true;
     }
 
     function_name = FD->getNameInfo().getName().getAsString();
 
+    auto time_start = std::chrono::steady_clock::now();
 #ifdef QUERY_BAD_MALLOC
-    queryBadMalloc(FD->getBody(), Context);
+    queryBadMalloc(FD->getBody(), Context, FD);
 #endif
 
 #ifdef QUERY_FPE
-    time_start = 
-        std::chrono::steady_clock::now();
     auto pair = queryFPE(FD->getBody(), Context);
-    time_end = 
-        std::chrono::steady_clock::now();
-    time_diff =
-        std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_start)
-            .count();
-    auto fpe_time = fopen("fpe_time.log", "a");
-    if (fpe_time) {
-      fprintf(fpe_time, "%ld\n", time_diff);
-      fclose(fpe_time);
-    }
     positive_div += pair.first;
     negative_div += pair.second;
 #endif
@@ -87,6 +74,15 @@ public:
     queryNPD(FD->getBody(), Context);
 #endif
 
+    auto time_end = std::chrono::steady_clock::now();
+    auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(
+                         time_end - time_start)
+                         .count();
+    auto f_time = fopen("time.log", "a");
+    if (f_time) {
+      fprintf(f_time, "%ld\n", time_diff);
+      fclose(f_time);
+    }
     return true;
   }
 
@@ -189,7 +185,7 @@ static FrontendPluginRegistry::Add<WarnAST> X("check-ast",
                                               "Check AST for concerns");
 
 std::vector<Json::Value> ResultsToJson(std::vector<CheckResult> &Results,
-                          std::string check) {
+                                       std::string check) {
   std::vector<Json::Value> results;
   for (const auto &res : Results) {
     Json::Value item;
